@@ -1,6 +1,6 @@
 ﻿namespace PbTools;
 
-public class FilePB
+public class PbFileTool
 {
     public List<string> FindDuplicatesByName(string directory)
     {

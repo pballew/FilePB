@@ -4,7 +4,7 @@
 //string _destDirectory = @"C:\temp\resizing\resized";
 //string _fileName = @"c:\temp\resizing\social-image-files.txt";
 
-var fileMaster = new FilePB();
+var fileMaster = new PbFileTool();
 
 var duplicates = fileMaster.FindDuplicatesByExtensionAndSize(@"C:\temp\test");
 //var duplicates = fileMaster.FindDuplicatesBySize(@"F:\gdrive\Music\_mine\_classical");
