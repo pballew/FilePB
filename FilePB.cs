@@ -1,32 +1,68 @@
-﻿using System.Diagnostics.CodeAnalysis;
-
-//public class FmFileInfo : IEqualityComparer<FmFileInfo>
-//{
-//    public string? FileType { get; set; }
-//    public string? FileSize { get; set; }
-
-//    public FmFileInfo(string path)
-//    {
-//    }
-
-//    public bool Equals(FmFileInfo? x, FmFileInfo? y)
-//    {
-//        if (x == null || y == null)
-//        {
-//            return false;
-//        }
-
-//        return x.FileType == y.FileType && x.FileSize == y.FileSize;
-//    }
-
-//    public int GetHashCode([DisallowNull] FmFileInfo obj)
-//    {
-//        throw new NotImplementedException();
-//    }
-//}
+﻿namespace PbTools;
 
 public class FilePB
 {
+    public List<string> FindDuplicatesByName(string directory)
+    {
+        var duplicates = new List<string>();
+        var alreadyChecked = new List<string>();
+
+        List<string> sourceFiles = Directory.GetFiles(directory, "", SearchOption.AllDirectories).ToList();
+        foreach (var filePath in sourceFiles)
+        {
+            string fileName = Path.GetFileName(filePath);
+
+            if (alreadyChecked.Contains(fileName))
+            {
+                duplicates.AddRange(sourceFiles.Where(x => fileName == Path.GetFileName(x)));
+            }
+            else
+            {
+                alreadyChecked.Add(fileName);
+            }
+        }
+
+        return duplicates
+            .OrderBy(x => Path.GetFileName(x))
+            .Distinct()
+            .ToList();
+    }
+
+    public List<PbFileInfo> FindDuplicatesByExtensionAndSize(string directory)
+    {
+        var sourceFilesInfo = new List<PbFileInfo>();
+        foreach (var filePath in Directory.GetFiles(directory, "", SearchOption.AllDirectories).ToList())
+        {
+            var stream = File.OpenRead(filePath);
+            sourceFilesInfo.Add(new PbFileInfo()
+            {
+                FilePath = filePath,
+                FileName = Path.GetFileName(filePath),
+                Extension = Path.GetExtension(filePath),
+                Length = stream.Length,
+            });
+        }
+
+        var duplicates = new List<PbFileInfo>();
+        var alreadyChecked = new List<PbFileInfo>();
+        foreach (var fileInfo in sourceFilesInfo)
+        {
+            if (alreadyChecked.Where(x => x.Extension == fileInfo.Extension && x.Length == fileInfo.Length).Any())
+            {
+                duplicates.AddRange(sourceFilesInfo.Where(x => x.Extension == fileInfo.Extension && x.Length == fileInfo.Length));
+            }
+            else
+            {
+                alreadyChecked.Add(fileInfo);
+            }
+        }
+
+        return duplicates.OrderBy(x => x.Length)
+            .ThenBy(x => x.FilePath)
+            .Distinct()
+            .ToList();
+    }
+
     public void CompareDirectories(string sourceDirectory, string destDirectory)
     {
         var sourceFiles = Directory.GetFiles(sourceDirectory, "", SearchOption.AllDirectories).ToList();
@@ -48,50 +84,15 @@ public class FilePB
         destNotInSource.ForEach(x => Console.WriteLine(x));
     }
 
-    public List<string> FindDuplicatesByName(string directory)
-    {
-        List<string> sourceFiles = Directory.GetFiles(directory, "", SearchOption.AllDirectories).ToList();
-
-        var duplicates = new List<string>();
-        var alreadyChecked = new List<string>();
-        foreach (var fullPath in sourceFiles)
-        {
-            string fileName = Path.GetFileName(fullPath);
-            if (alreadyChecked.Contains(fileName))
-            {
-                duplicates.AddRange(sourceFiles.Where(x => fileName == Path.GetFileName(x)));
-            }
-            else
-            {
-                alreadyChecked.Add(fileName);
-            }
-        }
-        return duplicates.OrderBy(x => Path.GetFileName(x)).Distinct().ToList();
-    }
-
     public void TouchFileDates(string directory)
     {
         var files = Directory.GetFiles(directory, "", SearchOption.AllDirectories).ToList();
         var date = DateTime.Now;
-        foreach(var file in files)
+        foreach (var file in files)
         {
             Console.WriteLine(file);
             File.SetLastWriteTime(file, date);
         }
-    }
-
-    public string GetConvertSQL(string fileName, string sourceExtension, string destExtension)
-    {
-        List<string> files = File.ReadAllLines(fileName).ToList();
-        var lines = files.Select(f => $"UPDATE Videos SET ArticleImage = '{f.Replace(sourceExtension, destExtension)}' where ArticleImage = '{f}'").ToList();
-        return string.Join("\n", lines);
-    }
-
-    public string GetRollbackSQL(string fileName, string sourceExtension, string destExtension)
-    {
-        List<string> files = File.ReadAllLines(fileName).ToList();
-        var lines = files.Select(f => $"UPDATE Articles SET SocialImage = '{f}' where SocialImage = '{f.Replace(sourceExtension, destExtension)}'").ToList();
-        return string.Join("\n", lines);
     }
 
     public void ListFiles(string sourceDirectory)
@@ -126,7 +127,7 @@ public class FilePB
                     Console.WriteLine($"Copying {sourceFile} to {destFile}");
 
                     string? dir = Path.GetDirectoryName(destFile);
-                    if (!Directory.Exists(dir))
+                    if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                     {
                         Directory.CreateDirectory(dir);
                     }

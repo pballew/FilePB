@@ -1,11 +1,15 @@
-﻿//string _sourceDirectory = @"C:\temp";
+﻿global using PbTools;
+
+//string _sourceDirectory = @"C:\temp";
 //string _destDirectory = @"C:\temp\resizing\resized";
 //string _fileName = @"c:\temp\resizing\social-image-files.txt";
 
 var fileMaster = new FilePB();
-var duplicates = fileMaster.FindDuplicatesByName(@"F:\gdrive\Music");
+
+var duplicates = fileMaster.FindDuplicatesByExtensionAndSize(@"C:\temp\test");
+//var duplicates = fileMaster.FindDuplicatesBySize(@"F:\gdrive\Music\_mine\_classical");
+duplicates.ForEach(x => Console.WriteLine($"{x.Length} {x.FilePath}"));
 Console.WriteLine($"DUPLICATE FILES: {duplicates.Count}");
-duplicates.ForEach(x => Console.WriteLine(x));
 
 //fileMaster.TouchFileDates(@"C:\temp\resizing\resized\article-collection\all");
 
