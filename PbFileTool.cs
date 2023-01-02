@@ -28,39 +28,44 @@ public class PbFileTool
             .ToList();
     }
 
-    public List<PbFileInfo> FindDuplicatesByExtensionAndSize(string directory)
+    public List<PbDuplicate> FindDuplicatesByExtensionAndSize(string directory)
     {
+        Console.Write("Reading file info...");
         var sourceFilesInfo = new List<PbFileInfo>();
-        foreach (var filePath in Directory.GetFiles(directory, "", SearchOption.AllDirectories).ToList())
+        var files = Directory.GetFiles(directory, "", SearchOption.AllDirectories).ToList();
+        long i = 0;
+        foreach (var filePath in files)
         {
-            var stream = File.OpenRead(filePath);
-            sourceFilesInfo.Add(new PbFileInfo()
-            {
-                FilePath = filePath,
-                FileName = Path.GetFileName(filePath),
-                Extension = Path.GetExtension(filePath),
-                Length = stream.Length,
-            });
-        }
+            sourceFilesInfo.Add(new PbFileInfo(filePath));
 
-        var duplicates = new List<PbFileInfo>();
+            if (i++ == 100)
+            {
+                Console.Write(".");
+                i = 0;
+            }
+        }
+        Console.WriteLine("DONE!");
+
+        var duplicates = new List<PbDuplicate>();
         var alreadyChecked = new List<PbFileInfo>();
-        foreach (var fileInfo in sourceFilesInfo)
+
+        while (sourceFilesInfo.Count > 0)
         {
-            if (alreadyChecked.Where(x => x.Extension == fileInfo.Extension && x.Length == fileInfo.Length).Any())
+            var nextFile = sourceFilesInfo.First();
+            var matchingFiles = sourceFilesInfo
+                .Where(x => x.FileUniqueId.Equals(nextFile.FileUniqueId))
+                .ToList();
+            if (matchingFiles.Count > 1)
             {
-                duplicates.AddRange(sourceFilesInfo.Where(x => x.Extension == fileInfo.Extension && x.Length == fileInfo.Length));
+                var duplicate = new PbDuplicate(nextFile.FileUniqueId);
+                matchingFiles.ForEach(x => duplicate.FileInfos.Add(x));
+                duplicates.Add(duplicate);
             }
-            else
-            {
-                alreadyChecked.Add(fileInfo);
-            }
+
+            sourceFilesInfo.RemoveAll(x => x.FileUniqueId.Equals(nextFile.FileUniqueId));
         }
 
-        return duplicates.OrderBy(x => x.Length)
-            .ThenBy(x => x.FilePath)
-            .Distinct()
-            .ToList();
+        return duplicates;
     }
 
     public void CompareDirectories(string sourceDirectory, string destDirectory)
